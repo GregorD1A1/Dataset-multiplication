@@ -10,6 +10,7 @@ class ImageLoader():
         self.images = np.empty((0, 300, 300, 3), dtype=np.uint8)
 
     def load(self, input_dataset_dir):
+        print('Loading images...')
         for image_name in os.listdir(input_dataset_dir):
             image = cv2.imread(os.path.join(input_dataset_dir, image_name))
             image = make_image_square(image)
@@ -39,22 +40,59 @@ def make_image_square(image):
 
 
 def save_images(images, output_dir):
+    print('Saving images...')
     for i, image in enumerate(images):
+        #image = cv2.resize(image, (128, 128))
         cv2.imwrite(f'{output_dir}/image_{i}.png', image)
 
 
-def augument_and_append(images, augmentation_fcn):
+def augument_and_append(images, *augmentation_fcns):
     # applies augmentation function to images and appends generated images to the old ones
-    images_aug = augmentation_fcn(images=images)
-    images = np.append(images, images_aug, axis=0)
-    return images
+    # inserting more than one function causes parallel generation and appending
+    new_images = images
+    for augmentation_fcn in augmentation_fcns:
+        augmented_images = augmentation_fcn(images=images)
+        new_images = np.append(new_images, augmented_images, axis=0)
+    return new_images
 
 
 def augmentation_pipeline(images):
-    aug_fcn = iaa.Fliplr()
-    images = augument_and_append(images, aug_fcn)
-    aug_fcn = iaa.Snowflakes(flake_size=(0.1, 0.3), speed=(0.01, 0.03))
-    images = augument_and_append(images, aug_fcn)
+    print('Generating new images...')
+    
+    # flip
+    aug_fcn1 = iaa.Fliplr()
+    images = augument_and_append(images, aug_fcn1)
+
+    # lightening and darkening
+    aug_fcn1 = iaa.Add(50)
+    aug_fcn2 = iaa.Add(-50)
+    images = augument_and_append(images, aug_fcn1, aug_fcn2)
+
+    # colorizing
+    aug_fcn1 = iaa.WithChannels(0, iaa.Add((-50, -30)))
+    aug_fcn2 = iaa.WithChannels(0, iaa.Add((50, 30)))
+    aug_fcn3 = iaa.WithChannels(1, iaa.Add((-50, -30)))
+    aug_fcn4 = iaa.WithChannels(1, iaa.Add((50, 30)))
+    aug_fcn5 = iaa.WithChannels(2, iaa.Add((-50, -30)))
+    aug_fcn6 = iaa.WithChannels(2, iaa.Add((50, 30)))
+    images = augument_and_append(images, aug_fcn1, aug_fcn2, aug_fcn3, aug_fcn4, aug_fcn5, aug_fcn6)
+
+    # contrast change
+    aug_fcn1 = iaa.GammaContrast((1.0, 2.0))
+    images = augument_and_append(images, aug_fcn1)
+
+    # histagram equalization (whatever it is)
+    aug_fcn1 = iaa.BlendAlpha((0.4, 0.6), iaa.AllChannelsHistogramEqualization())
+    images = augument_and_append(images, aug_fcn1)
+
+    # perspective change
+    aug_fcn1 = iaa.PerspectiveTransform(scale=(0.07, 0.07))
+    images = augument_and_append(images, aug_fcn1)
+
+    # rotation
+    aug_fcn1 = iaa.Affine(rotate=(15, 20), scale=(1.15, 1.25))
+    aug_fcn2 = iaa.Affine(rotate=(-15, -20), scale=(1.15, 1.25))
+    images = augument_and_append(images, aug_fcn1, aug_fcn2)
 
     return images
 
