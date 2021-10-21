@@ -7,16 +7,17 @@ from tqdm import tqdm
 
 class ImageLoader:
     def __init__(self):
-        self.images = np.empty((0, 300, 300, 3), dtype=np.uint8)
+        self.process_size = 256
+        self.images = np.empty((0, self.process_size, self.process_size, 3), dtype=np.uint8)
 
-    def load(self, input_dataset_dir):
+    def load(self, input_dataset_dir, n_images):
         print('Loading images...')
         # tqdm jest po to, by rysować ładne skale ładowania
-        for image_name in tqdm(os.listdir(input_dataset_dir)):
+        for image_name in tqdm(os.listdir(input_dataset_dir)[:n_images]):
             image = cv2.imread(os.path.join(input_dataset_dir, image_name))
             image = make_image_square(image)
             # changing image size to achieve similar image sizes to make image batch
-            image = cv2.resize(image, (300, 300))
+            image = cv2.resize(image, (self.process_size, self.process_size))
             # apprending to batch
             self.images = np.append(self.images, [image], axis=0)
 
@@ -44,7 +45,7 @@ def make_image_square(image):
 def save_images(images, output_dir):
     print('Saving images...')
     for i, image in tqdm(enumerate(images)):
-        # image = cv2.resize(image, (128, 128))
+        image = cv2.resize(image, (128, 128))
         cv2.imwrite(f'{output_dir}/image_{i}.png', image)
 
 
@@ -63,14 +64,14 @@ def augmentation_pipeline(images):
     print('Generating new images...')
 
     # colorizing
-    print('operation 1/7...')
-    aug_fcn1 = iaa.WithChannels(0, iaa.Add((-50, -30)))
-    aug_fcn2 = iaa.WithChannels(0, iaa.Add((50, 30)))
-    aug_fcn3 = iaa.WithChannels(1, iaa.Add((-50, -30)))
-    aug_fcn4 = iaa.WithChannels(1, iaa.Add((50, 30)))
-    aug_fcn5 = iaa.WithChannels(2, iaa.Add((-50, -30)))
-    aug_fcn6 = iaa.WithChannels(2, iaa.Add((50, 30)))
-    images = augument_and_append(images, aug_fcn1, aug_fcn2, aug_fcn3, aug_fcn4, aug_fcn5, aug_fcn6)
+    #print('operation 1/7...')
+    #aug_fcn1 = iaa.WithChannels(0, iaa.Add((-50, -30)))
+    #aug_fcn2 = iaa.WithChannels(0, iaa.Add((50, 30)))
+    #aug_fcn3 = iaa.WithChannels(1, iaa.Add((-50, -30)))
+    #aug_fcn4 = iaa.WithChannels(1, iaa.Add((50, 30)))
+    #aug_fcn5 = iaa.WithChannels(2, iaa.Add((-50, -30)))
+    #aug_fcn6 = iaa.WithChannels(2, iaa.Add((50, 30)))
+    #images = augument_and_append(images, aug_fcn1, aug_fcn2, aug_fcn3, aug_fcn4, aug_fcn5, aug_fcn6)
 
     # rotation
     print('operation 2/7...')
@@ -109,13 +110,14 @@ def augmentation_pipeline(images):
 
 
 # variables
-input_dataset_dir = './raw_images'
-output_dataset_dir = './dataset_mltpl'
+input_dataset_dir = './img_align_celeba'
+output_dataset_dir = './celeba_mltpl'
+n_images = 10000
 
 # images loading
 loader = ImageLoader()
-images = loader.load(input_dataset_dir)
+images = loader.load(input_dataset_dir, n_images)
 
-images = augmentation_pipeline(images)
+#images = augmentation_pipeline(images)
 
 save_images(images, output_dataset_dir)
